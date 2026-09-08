@@ -1,0 +1,61 @@
+name: "Abertura de Chamado - PCP/TI"
+description: "Formulário para solicitar suporte de TI relacionado a área de PCP"
+title: "[Chamado] "
+labels: ["chamado-pcp"]
+body:
+  - type: input
+    id: nome
+    attributes:
+      label: "Seu nome completo"
+      placeholder: "Ex: Maria Souza"
+    validations:
+      required: true
+
+  - type: input
+    id: area
+    attributes:
+      label: "Setor/Área"
+      placeholder: "Ex: PCP - Turno A"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: prioridade
+    attributes:
+      label: "Prioridade"
+      options:
+        - "Baixa"
+        - "Normal"
+        - "Alta"
+        - "Urgente (impacto na produção)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: tipo
+    attributes:
+      label: "Tipo de solicitação"
+      options:
+        - "Erro em sistema"
+        - "Solicitação de acesso"
+        - "Problema de rede/impressora"
+        - "Duvida sobre uso de sistema"
+        - "Outro"
+    validations:
+      required: true
+
+  - type: textarea
+    id: descricao
+    attributes:
+      label: "Descreva o problema ou solicitação"
+      placeholder: "Explique o que está acontecendo, quando começou e quais sistemas estão envolvidos."
+    validations:
+      required: true
+
+  - type: input
+    id: contato
+    attributes:
+      label: "Telefone/ramal para contato (opcional)"
+      placeholder: "Ex: 9999-9999"
+    validations:
+      required: false

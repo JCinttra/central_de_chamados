@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chamados de TI - PCP</title>
+<style>
+  body { font-family: Arial, Helvetica, sans-serif; background:#f4f6f9; margin:0; padding:0; color:#222; }
+  header { background:#0d47a1; color:#fff; padding:24px; text-align:center; position:relative; }
+  header h1 { margin:0; font-size:24px; }
+  header p { margin:6px 0 0; font-size:14px; opacity:.9; }
+  .logout { position:absolute; top:20px; right:20px; background:rgba(255,255,255,.15); color:#fff;
+             border:1px solid rgba(255,255,255,.4); padding:8px 14px; border-radius:6px; text-decoration:none; font-size:13px; }
+  .logout:hover { background:rgba(255,255,255,.3); }
+  .container { max-width:820px; margin:30px auto; padding:0 16px; }
+  .card { background:#fff; border-radius:10px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,.08); margin-bottom:20px; }
+  .card h2 { margin-top:0; font-size:18px; color:#0d47a1; }
+  .btn { display:inline-block; background:#0d47a1; color:#fff; text-decoration:none; padding:14px 22px; border-radius:8px; font-weight:bold; font-size:16px; }
+  .btn:hover { background:#093275; }
+  ul { line-height:1.7; }
+  #issues-list { list-style:none; padding:0; }
+  #issues-list li { padding:10px 14px; border:1px solid #e0e0e0; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
+  .badge { font-size:12px; padding:3px 10px; border-radius:12px; font-weight:bold; }
+  .open { background:#fdecea; color:#c62828; }
+  .closed { background:#e6f4ea; color:#2e7d32; }
+  footer { text-align:center; font-size:12px; color:#888; padding:20px; }
+  a.issue-link { color:#0d47a1; text-decoration:none; }
+  .welcome { font-size:13px; opacity:.9; margin-top:4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="logout" href="#" onclick="logout()">Sair</a>
+  <h1>Central de Chamados de TI - PCP</h1>
+  <p>Suporte de TI para a área de Planejamento e Controle da Produção</p>
+  <p class="welcome" id="welcomeMsg"></p>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <h2>Como abrir um chamado</h2>
+    <ol>
+      <li>Clique no botão abaixo "Abrir novo chamado".</li>
+      <li>Você será direcionado ao GitHub (pode ser necessário criar uma conta gratuita, leva 1 minuto).</li>
+      <li>Preencha o formulário com os detalhes do problema/solicitação.</li>
+      <li>Clique em "Submit new issue" para enviar. O ponto focal de TI será notificado automaticamente.</li>
+    </ol>
+    <p style="text-align:center; margin-top:20px;">
+      <a class="btn" href="https://github.com/JCinttra/central_de_chamados/issues/new?template=chamado.yml" target="_blank">
+        + Abrir novo chamado
+      </a>
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Chamados recentes</h2>
+    <ul id="issues-list">
+      <li>Carregando chamados...</li>
+    </ul>
+    <p style="font-size:13px; color:#666;">
+      Lista atualizada automaticamente a partir dos chamados abertos no GitHub.
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>Dúvidas frequentes</h2>
+    <ul>
+      <li><b>Preciso de conta no GitHub?</b> Sim, é grátis e leva menos de 1 minuto para criar.</li>
+      <li><b>Como acompanho meu chamado?</b> Você recebe atualizações por e-mail sempre que o TI responder na sua issue.</li>
+      <li><b>Qual o prazo de atendimento?</b> Chamados marcados como "Urgente" são priorizados; os demais são tratados em até 2 dias úteis.</li>
+    </ul>
+  </div>
+
+</div>
+
+<footer>
+  Ponto focal de TI - PCP | Página gerada automaticamente
+</footer>
+
+<script>
+  // Protege a pagina: exige login previo
+  const role = localStorage.getItem('pcp_role');
+  const user = localStorage.getItem('pcp_user');
+  if (!role) {
+    window.location.href = "login.html";
+  } else {
+    document.getElementById('welcomeMsg').textContent = "Logado como: " + user;
+  }
+
+  function logout() {
+    localStorage.removeItem('pcp_role');
+    localStorage.removeItem('pcp_user');
+    window.location.href = "login.html";
+  }
+
+  const USUARIO = "JCinttra";
+  const REPOSITORIO = "central_de_chamados";
+
+  fetch(`https://api.github.com/repos/${USUARIO}/${REPOSITORIO}/issues?state=all&per_page=10`)
+    .then(r => r.json())
+    .then(data => {
+      const list = document.getElementById('issues-list');
+      list.innerHTML = '';
+      if (!Array.isArray(data) || data.length === 0) {
+        list.innerHTML = '<li>Nenhum chamado registrado ainda.</li>';
+        return;
+      }
+      data.forEach(issue => {
+        const li = document.createElement('li');
+        const badgeClass = issue.state === 'open' ? 'open' : 'closed';
+        const badgeText = issue.state === 'open' ? 'Aberto' : 'Concluído';
+        li.innerHTML = `<a class="issue-link" href="${issue.html_url}" target="_blank">#${issue.number} - ${issue.title}</a>
+                         <span class="badge ${badgeClass}">${badgeText}</span>`;
+        list.appendChild(li);
+      });
+    })
+    .catch(() => {
+      document.getElementById('issues-list').innerHTML = '<li>Não foi possível carregar os chamados agora.</li>';
+    });
+</script>
+
+</body>
+</html>

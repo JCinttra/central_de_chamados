@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel ADM - Central de Chamados PCP</title>
+<style>
+  body { font-family: Arial, Helvetica, sans-serif; background:#f4f6f9; margin:0; padding:0; color:#222; }
+  header { background:#1b1f3b; color:#fff; padding:24px; text-align:center; position:relative; }
+  header h1 { margin:0; font-size:24px; }
+  .logout { position:absolute; top:20px; right:20px; background:rgba(255,255,255,.15); color:#fff;
+             border:1px solid rgba(255,255,255,.4); padding:8px 14px; border-radius:6px; text-decoration:none; font-size:13px; }
+  .logout:hover { background:rgba(255,255,255,.3); }
+  .container { max-width:900px; margin:30px auto; padding:0 16px; }
+  .card { background:#fff; border-radius:10px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,.08); margin-bottom:20px; }
+  .card h2 { margin-top:0; font-size:18px; color:#1b1f3b; }
+  .filters { margin-bottom:14px; }
+  .filters button { background:#eee; border:1px solid #ccc; padding:6px 14px; border-radius:6px; margin-right:8px; cursor:pointer; font-size:13px; }
+  .filters button.active { background:#1b1f3b; color:#fff; border-color:#1b1f3b; }
+  #issues-list { list-style:none; padding:0; }
+  #issues-list li { padding:12px 14px; border:1px solid #e0e0e0; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; }
+  .badge { font-size:12px; padding:3px 10px; border-radius:12px; font-weight:bold; }
+  .open { background:#fdecea; color:#c62828; }
+  .closed { background:#e6f4ea; color:#2e7d32; }
+  a.issue-link { color:#1b1f3b; text-decoration:none; font-weight:bold; }
+  .meta { font-size:12px; color:#777; width:100%; }
+  .btn { display:inline-block; background:#1b1f3b; color:#fff; text-decoration:none; padding:10px 16px; border-radius:8px; font-weight:bold; font-size:14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="logout" href="#" onclick="logout()">Sair</a>
+  <h1>Painel Administrativo - ADM</h1>
+  <p>Gestão de chamados de TI - PCP</p>
+</header>
+
+<div class="container">
+  <div class="card">
+    <h2>Todos os chamados</h2>
+    <div class="filters">
+      <button class="active" data-filter="all">Todos</button>
+      <button data-filter="open">Abertos</button>
+      <button data-filter="closed">Concluídos</button>
+    </div>
+    <ul id="issues-list"><li>Carregando chamados...</li></ul>
+    <p style="text-align:center; margin-top:16px;">
+      <a class="btn" href="https://github.com/JCinttra/central_de_chamados/issues" target="_blank">Abrir GitHub Issues (gerenciar/responder)</a>
+    </p>
+  </div>
+</div>
+
+<script>
+  const role = localStorage.getItem('pcp_role');
+  if (role !== 'admin') {
+    window.location.href = "login.html";
+  }
+
+  function logout() {
+    localStorage.removeItem('pcp_role');
+    localStorage.removeItem('pcp_user');
+    window.location.href = "login.html";
+  }
+
+  const USUARIO = "JCinttra";
+  const REPOSITORIO = "central_de_chamados";
+  let allIssues = [];
+
+  function render(filter) {
+    const list = document.getElementById('issues-list');
+    list.innerHTML = '';
+    const filtered = allIssues.filter(i => filter === 'all' ? true : i.state === filter);
+    if (filtered.length === 0) {
+      list.innerHTML = '<li>Nenhum chamado encontrado.</li>';
+      return;
+    }
+    filtered.forEach(issue => {
+      const li = document.createElement('li');
+      const badgeClass = issue.state === 'open' ? 'open' : 'closed';
+      const badgeText = issue.state === 'open' ? 'Aberto' : 'Concluído';
+      const data = new Date(issue.created_at).toLocaleDateString('pt-BR');
+      li.innerHTML = `<a class="issue-link" href="${issue.html_url}" target="_blank">#${issue.number} - ${issue.title}</a>
+                       <span class="badge ${badgeClass}">${badgeText}</span>
+                       <span class="meta">Aberto por ${issue.user.login} em ${data}</span>`;
+      list.appendChild(li);
+    });
+  }
+
+  document.querySelectorAll('.filters button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filters button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      render(btn.dataset.filter);
+    });
+  });
+
+  fetch(`https://api.github.com/repos/${USUARIO}/${REPOSITORIO}/issues?state=all&per_page=50`)
+    .then(r => r.json())
+    .then(data => {
+      allIssues = Array.isArray(data) ? data : [];
+      render('all');
+    })
+    .catch(() => {
+      document.getElementById('issues-list').innerHTML = '<li>Não foi possível carregar os chamados agora.</li>';
+    });
+</script>
+</body>
+</html>
