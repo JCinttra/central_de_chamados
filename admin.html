@@ -2,9 +2,159 @@
 <header><h1>Painel Administrativo — PCP/TI</h1><p id="cab">Gerencie chamados, atualize status e responda usuários.</p></header><nav class="nav"><a href="index.html">Abrir chamado</a><a href="acompanhar.html">Acompanhar chamado</a><a href="admin.html">Área ADM</a><a id="sair" class="hidden" href="#">Sair</a></nav>
 <main class="container"><section id="loginBox" class="card login"><h2>Login do administrador</h2><p class="small">Use o e-mail e senha cadastrados no Firebase Authentication.</p><form id="login"><label>E-mail</label><input id="email" type="email" required><label style="margin-top:14px">Senha</label><input id="senha" type="password" required><br><button class="btn" type="submit">Entrar</button><div id="loginMsg" class="notice"></div></form></section>
 <section id="painel" class="hidden"><div class="stats"><div class="stat"><b id="nTodos">0</b><span>Total</span></div><div class="stat"><b id="nAbertos">0</b><span>Abertos</span></div><div class="stat"><b id="nAtend">0</b><span>Em atendimento</span></div><div class="stat"><b id="nConcl">0</b><span>Concluídos</span></div></div><div class="card"><h2>Chamados</h2><div class="filters"><select id="fStatus"><option value="">Todos os status</option><option>Aberto</option><option>Em atendimento</option><option>Aguardando usuário</option><option>Concluído</option></select><input id="busca" placeholder="Pesquisar por protocolo, nome ou assunto"></div><div id="lista" class="list"></div></div></section></main><div id="modal" class="modal hidden"></div>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script><script src="firebase-config.js"></script><script>
-let chamados=[];const painel=document.getElementById('painel'),loginBox=document.getElementById('loginBox'),lista=document.getElementById('lista');function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML}function dt(v){return v&&v.toDate?v.toDate().toLocaleString('pt-BR'):'—'}function bclass(s){return {'Aberto':'aberto','Em atendimento':'atendimento','Aguardando usuário':'aguardando','Concluído':'concluido'}[s]||'aberto'}
-auth.onAuthStateChanged(u=>{if(u){loginBox.classList.add('hidden');painel.classList.remove('hidden');document.getElementById('sair').classList.remove('hidden');carregar()}else{loginBox.classList.remove('hidden');painel.classList.add('hidden');document.getElementById('sair').classList.add('hidden')}});document.getElementById('login').addEventListener('submit',async e=>{e.preventDefault();let m=document.getElementById('loginMsg');m.textContent='Entrando...';m.className='notice info';try{await auth.signInWithEmailAndPassword(email.value,senha.value)}catch(err){m.textContent='E-mail ou senha inválidos.';m.className='notice error'}});document.getElementById('sair').onclick=e=>{e.preventDefault();auth.signOut()};
-async function carregar(){try{let s=await db.collection('chamados').orderBy('criadoEm','desc').get();chamados=s.docs.map(x=>({id:x.id,...x.data()}));render()}catch(e){lista.innerHTML='<p>Erro ao carregar chamados. Confira as regras do Firestore.</p>';console.error(e)}}function render(){let st=fStatus.value,termo=busca.value.toLowerCase();let arr=chamados.filter(x=>(!st||x.status===st)&&(!termo||[x.protocolo,x.nomeSolicitante,x.assunto,x.setor].join(' ').toLowerCase().includes(termo)));nTodos.textContent=chamados.length;nAbertos.textContent=chamados.filter(x=>x.status==='Aberto').length;nAtend.textContent=chamados.filter(x=>x.status==='Em atendimento').length;nConcl.textContent=chamados.filter(x=>x.status==='Concluído').length;lista.innerHTML=arr.length?arr.map(x=>'<article class="item"><div class="item-top"><div><h3>'+esc(x.protocolo)+' — '+esc(x.assunto)+'</h3><p class="small">'+esc(x.nomeSolicitante)+' · '+esc(x.setor)+' · '+dt(x.criadoEm)+'</p></div><span class="badge '+bclass(x.status)+'">'+esc(x.status)+'</span></div><p>'+esc(x.descricao).slice(0,220)+(x.descricao.length>220?'…':'')+'</p><div class="actions"><button class="btn" onclick="abrir(''+x.id+'')">Ver e atender</button></div></article>').join(''):'<p class="small">Nenhum chamado encontrado.</p>'}fStatus.onchange=render;busca.oninput=render;
-async function abrir(id){let x=chamados.find(i=>i.id===id),modal=document.getElementById('modal');modal.innerHTML='<div class="modal-box"><button class="btn secondary right" onclick="fechar()">Fechar</button><h2>'+esc(x.protocolo)+' — '+esc(x.assunto)+'</h2><p><b>Solicitante:</b> '+esc(x.nomeSolicitante)+' · '+esc(x.setor)+'<br><b>Contato:</b> '+esc(x.contato||'Não informado')+'<br><b>Tipo:</b> '+esc(x.tipo)+' · <b>Prioridade:</b> '+esc(x.prioridade)+'</p><p><b>Descrição:</b><br>'+esc(x.descricao)+'</p><hr><label>Status</label><select id="novoStatus"><option '+(x.status==='Aberto'?'selected':'')+'>Aberto</option><option '+(x.status==='Em atendimento'?'selected':'')+'>Em atendimento</option><option '+(x.status==='Aguardando usuário'?'selected':'')+'>Aguardando usuário</option><option '+(x.status==='Concluído'?'selected':'')+'>Concluído</option></select><br><br><label>Resposta / atualização para o solicitante</label><textarea id="textoResposta" placeholder="Digite uma atualização do atendimento."></textarea><div class="actions"><button class="btn" onclick="salvar(''+id+'')">Salvar atualização</button></div><h3>Histórico</h3><div id="hist">Carregando...</div></div>';modal.classList.remove('hidden');let cm=await db.collection('chamados').doc(id).collection('mensagens').orderBy('criadoEm','asc').get();document.getElementById('hist').innerHTML=cm.empty?'<p class="small">Sem atualizações.</p>':cm.docs.map(d=>{let m=d.data();return '<div class="comment"><b>'+esc(m.autor||'TI')+'</b> <span class="small">'+dt(m.criadoEm)+'</span><p>'+esc(m.texto)+'</p></div>'}).join('')}function fechar(){document.getElementById('modal').classList.add('hidden')}async function salvar(id){let status=novoStatus.value,texto=textoResposta.value.trim();try{await db.collection('chamados').doc(id).update({status,atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()});if(texto)await db.collection('chamados').doc(id).collection('mensagens').add({autor:'TI / PCP',texto,criadoEm:firebase.firestore.FieldValue.serverTimestamp()});fechar();await carregar()}catch(e){alert('Não foi possível salvar. Confira as regras do Firestore.');console.error(e)}}
-</script></body></html>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+let chamados = [];
+const painel = document.getElementById('painel');
+const loginBox = document.getElementById('loginBox');
+const lista = document.getElementById('lista');
+const modal = document.getElementById('modal');
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+function dt(v) { return v && v.toDate ? v.toDate().toLocaleString('pt-BR') : '—'; }
+function bclass(s) {
+  return { 'Aberto': 'aberto', 'Em atendimento': 'atendimento', 'Aguardando usuário': 'aguardando', 'Concluído': 'concluido' }[s] || 'aberto';
+}
+
+auth.onAuthStateChanged(function (u) {
+  if (u) {
+    loginBox.classList.add('hidden');
+    painel.classList.remove('hidden');
+    document.getElementById('sair').classList.remove('hidden');
+    carregar();
+  } else {
+    loginBox.classList.remove('hidden');
+    painel.classList.add('hidden');
+    document.getElementById('sair').classList.add('hidden');
+  }
+});
+
+document.getElementById('login').addEventListener('submit', async function (e) {
+  e.preventDefault();
+  const m = document.getElementById('loginMsg');
+  m.textContent = 'Entrando...';
+  m.className = 'notice info';
+  try {
+    await auth.signInWithEmailAndPassword(document.getElementById('email').value.trim(), document.getElementById('senha').value);
+  } catch (err) {
+    m.textContent = 'E-mail ou senha inválidos.';
+    m.className = 'notice error';
+    console.error(err);
+  }
+});
+
+document.getElementById('sair').addEventListener('click', function (e) {
+  e.preventDefault();
+  auth.signOut();
+});
+
+async function carregar() {
+  try {
+    const s = await db.collection('chamados').orderBy('criadoEm', 'desc').get();
+    chamados = s.docs.map(function (x) { return Object.assign({ id: x.id }, x.data()); });
+    render();
+  } catch (e) {
+    lista.innerHTML = '<p>Erro ao carregar chamados. Confira as regras do Firestore.</p>';
+    console.error(e);
+  }
+}
+
+function render() {
+  const st = document.getElementById('fStatus').value;
+  const termo = document.getElementById('busca').value.toLowerCase();
+  const arr = chamados.filter(function (x) {
+    const matchStatus = !st || x.status === st;
+    const matchTermo = !termo || [x.protocolo, x.nomeSolicitante, x.assunto, x.setor].join(' ').toLowerCase().includes(termo);
+    return matchStatus && matchTermo;
+  });
+
+  document.getElementById('nTodos').textContent = chamados.length;
+  document.getElementById('nAbertos').textContent = chamados.filter(function (x) { return x.status === 'Aberto'; }).length;
+  document.getElementById('nAtend').textContent = chamados.filter(function (x) { return x.status === 'Em atendimento'; }).length;
+  document.getElementById('nConcl').textContent = chamados.filter(function (x) { return x.status === 'Concluído'; }).length;
+
+  lista.innerHTML = '';
+  if (arr.length === 0) {
+    lista.innerHTML = '<p class="small">Nenhum chamado encontrado.</p>';
+    return;
+  }
+
+  arr.forEach(function (x) {
+    const art = document.createElement('article');
+    art.className = 'item';
+    const descTrunc = x.descricao.length > 220 ? x.descricao.slice(0, 220) + '…' : x.descricao;
+    art.innerHTML =
+      '<div class="item-top"><div><h3>' + esc(x.protocolo) + ' — ' + esc(x.assunto) + '</h3>' +
+      '<p class="small">' + esc(x.nomeSolicitante) + ' · ' + esc(x.setor) + ' · ' + dt(x.criadoEm) + '</p></div>' +
+      '<span class="badge ' + bclass(x.status) + '">' + esc(x.status) + '</span></div>' +
+      '<p>' + esc(descTrunc) + '</p>' +
+      '<div class="actions"><button class="btn btn-abrir" type="button">Ver e atender</button></div>';
+    art.querySelector('.btn-abrir').addEventListener('click', function () { abrir(x.id); });
+    lista.appendChild(art);
+  });
+}
+
+document.getElementById('fStatus').addEventListener('change', render);
+document.getElementById('busca').addEventListener('input', render);
+
+async function abrir(id) {
+  const x = chamados.find(function (i) { return i.id === id; });
+  modal.innerHTML =
+    '<div class="modal-box">' +
+    '<button class="btn secondary right" type="button" id="btnFechar">Fechar</button>' +
+    '<h2>' + esc(x.protocolo) + ' — ' + esc(x.assunto) + '</h2>' +
+    '<p><b>Solicitante:</b> ' + esc(x.nomeSolicitante) + ' · ' + esc(x.setor) + '<br>' +
+    '<b>Contato:</b> ' + esc(x.contato || 'Não informado') + '<br>' +
+    '<b>Tipo:</b> ' + esc(x.tipo) + ' · <b>Prioridade:</b> ' + esc(x.prioridade) + '</p>' +
+    '<p><b>Descrição:</b><br>' + esc(x.descricao) + '</p><hr>' +
+    '<label>Status</label><select id="novoStatus">' +
+    '<option' + (x.status === 'Aberto' ? ' selected' : '') + '>Aberto</option>' +
+    '<option' + (x.status === 'Em atendimento' ? ' selected' : '') + '>Em atendimento</option>' +
+    '<option' + (x.status === 'Aguardando usuário' ? ' selected' : '') + '>Aguardando usuário</option>' +
+    '<option' + (x.status === 'Concluído' ? ' selected' : '') + '>Concluído</option>' +
+    '</select><br><br>' +
+    '<label>Resposta / atualização para o solicitante</label>' +
+    '<textarea id="textoResposta" placeholder="Digite uma atualização do atendimento."></textarea>' +
+    '<div class="actions"><button class="btn" type="button" id="btnSalvar">Salvar atualização</button></div>' +
+    '<h3>Histórico</h3><div id="hist">Carregando...</div></div>';
+
+  modal.classList.remove('hidden');
+  document.getElementById('btnFechar').addEventListener('click', fechar);
+  document.getElementById('btnSalvar').addEventListener('click', function () { salvar(id); });
+
+  const cm = await db.collection('chamados').doc(id).collection('mensagens').orderBy('criadoEm', 'asc').get();
+  const hist = document.getElementById('hist');
+  if (cm.empty) {
+    hist.innerHTML = '<p class="small">Sem atualizações.</p>';
+  } else {
+    hist.innerHTML = cm.docs.map(function (d) {
+      const m = d.data();
+      return '<div class="comment"><b>' + esc(m.autor || 'TI') + '</b> <span class="small">' + dt(m.criadoEm) + '</span><p>' + esc(m.texto) + '</p></div>';
+    }).join('');
+  }
+}
+
+function fechar() { modal.classList.add('hidden'); modal.innerHTML = ''; }
+
+async function salvar(id) {
+  const status = document.getElementById('novoStatus').value;
+  const texto = document.getElementById('textoResposta').value.trim();
+  try {
+    await db.collection('chamados').doc(id).update({ status: status, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() });
+    if (texto) {
+      await db.collection('chamados').doc(id).collection('mensagens').add({
+        autor: 'TI / PCP', texto: texto, criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+    fechar();
+    await carregar();
+  } catch (e) {
+    alert('Não foi possível salvar. Confira as regras do Firestore.');
+    console.error(e);
+  }
+}
+</script>
+</body></html>
