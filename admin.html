@@ -1,13 +1,45 @@
 <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Área ADM | Planejamento</title><link rel="stylesheet" href="style.css"></head><body>
-<header><h1>Painel Administrativo — Planejamento</h1><p id="cab">Gerencie chamados, atualize status e responda usuários.</p></header><nav class="nav"><a href="index.html">Abrir chamado</a><a href="acompanhar.html">Acompanhar chamado</a><a href="admin.html">Área ADM</a><a id="sair" class="hidden" href="#">Sair</a></nav>
-<main class="container"><section id="loginBox" class="card login"><h2>Login do administrador</h2><p class="small">Use o e-mail e senha cadastrados no Firebase Authentication.</p><form id="login"><label>E-mail</label><input id="email" type="email" required><label style="margin-top:14px">Senha</label><input id="senha" type="password" required><br><button class="btn" type="submit">Entrar</button><div id="loginMsg" class="notice"></div></form></section>
-<section id="painel" class="hidden"><div class="stats"><div class="stat"><b id="nTodos">0</b><span>Total</span></div><div class="stat"><b id="nAbertos">0</b><span>Abertos</span></div><div class="stat"><b id="nAtend">0</b><span>Em atendimento</span></div><div class="stat"><b id="nConcl">0</b><span>Concluídos</span></div></div><div class="card"><h2>Chamados</h2><div class="filters"><select id="fStatus"><option value="">Todos os status</option><option>Aberto</option><option>Em atendimento</option><option>Aguardando usuário</option><option>Concluído</option></select><input id="busca" placeholder="Pesquisar por protocolo, nome ou assunto"></div><div id="lista" class="list"></div></div></section></main><div id="modal" class="modal hidden"></div>
+<header><h1>Painel Administrativo — Planejamento</h1><p id="cab">Gerencie chamados, atualize status e responda usuários.</p></header>
+<nav class="nav"><a href="index.html">Abrir chamado</a><a href="acompanhar.html">Acompanhar chamado</a><a href="admin.html">Área ADM</a><a id="sair" class="hidden" href="#">Sair</a></nav>
+<main class="container">
+<section id="loginBox" class="card login">
+  <h2>Login do administrador</h2>
+  <p class="small">Use o e-mail e senha cadastrados no Firebase Authentication.</p>
+  <form id="login">
+    <label>E-mail</label><input id="email" type="email" required>
+    <label style="margin-top:14px">Senha</label><input id="senha" type="password" required>
+    <label style="margin-top:14px">Seu nome (aparecerá nos chamados que você atender)</label>
+    <input id="nomeAdm" placeholder="Ex.: Maria Souza" maxlength="60">
+    <p class="small" style="margin-top:4px">Preencha apenas se for a primeira vez que faz login, ou se quiser corrigir seu nome.</p>
+    <button class="btn" type="submit" style="margin-top:14px">Entrar</button>
+    <div id="loginMsg" class="notice"></div>
+  </form>
+</section>
+<section id="painel" class="hidden">
+  <div class="stats">
+    <div class="stat"><b id="nTodos">0</b><span>Total</span></div>
+    <div class="stat"><b id="nAbertos">0</b><span>Abertos</span></div>
+    <div class="stat"><b id="nAtend">0</b><span>Em atendimento</span></div>
+    <div class="stat"><b id="nConcl">0</b><span>Concluídos</span></div>
+  </div>
+  <div class="card">
+    <h2>Chamados</h2>
+    <div class="filters">
+      <select id="fStatus"><option value="">Todos os status</option><option>Aberto</option><option>Em atendimento</option><option>Aguardando usuário</option><option>Concluído</option></select>
+      <select id="fResp"><option value="">Todos os responsáveis</option><option value="__sem__">Sem responsável</option><option value="__meus__">Meus chamados</option></select>
+      <input id="busca" placeholder="Pesquisar por protocolo, nome ou assunto">
+    </div>
+    <div id="lista" class="list"></div>
+  </div>
+</section>
+</main><div id="modal" class="modal hidden"></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script>
 let chamados = [];
+let currentAdmin = null; // {uid, nome, email}
 const painel = document.getElementById('painel');
 const loginBox = document.getElementById('loginBox');
 const lista = document.getElementById('lista');
@@ -19,13 +51,15 @@ function bclass(s) {
   return { 'Aberto': 'aberto', 'Em atendimento': 'atendimento', 'Aguardando usuário': 'aguardando', 'Concluído': 'concluido' }[s] || 'aberto';
 }
 
-auth.onAuthStateChanged(function (u) {
+auth.onAuthStateChanged(async function (u) {
   if (u) {
     loginBox.classList.add('hidden');
     painel.classList.remove('hidden');
     document.getElementById('sair').classList.remove('hidden');
-    carregar();
+    currentAdmin = { uid: u.uid, nome: u.displayName || u.email, email: u.email };
+    await carregar();
   } else {
+    currentAdmin = null;
     loginBox.classList.remove('hidden');
     painel.classList.add('hidden');
     document.getElementById('sair').classList.add('hidden');
@@ -38,7 +72,11 @@ document.getElementById('login').addEventListener('submit', async function (e) {
   m.textContent = 'Entrando...';
   m.className = 'notice info';
   try {
-    await auth.signInWithEmailAndPassword(document.getElementById('email').value.trim(), document.getElementById('senha').value);
+    const cred = await auth.signInWithEmailAndPassword(document.getElementById('email').value.trim(), document.getElementById('senha').value);
+    const nomeInformado = document.getElementById('nomeAdm').value.trim();
+    if (nomeInformado) {
+      await cred.user.updateProfile({ displayName: nomeInformado });
+    }
   } catch (err) {
     m.textContent = 'E-mail ou senha inválidos.';
     m.className = 'notice error';
@@ -62,13 +100,23 @@ async function carregar() {
   }
 }
 
+function respBadge(x) {
+  if (!x.responsavelNome) return '<span class="resp resp-none">Sem responsável</span>';
+  const mine = currentAdmin && x.responsavelUid === currentAdmin.uid;
+  return '<span class="resp ' + (mine ? 'resp-me' : '') + '">Atendido por: ' + esc(x.responsavelNome) + (mine ? ' (você)' : '') + '</span>';
+}
+
 function render() {
   const st = document.getElementById('fStatus').value;
+  const fr = document.getElementById('fResp').value;
   const termo = document.getElementById('busca').value.toLowerCase();
   const arr = chamados.filter(function (x) {
     const matchStatus = !st || x.status === st;
     const matchTermo = !termo || [x.protocolo, x.nomeSolicitante, x.assunto, x.setor].join(' ').toLowerCase().includes(termo);
-    return matchStatus && matchTermo;
+    let matchResp = true;
+    if (fr === '__sem__') matchResp = !x.responsavelNome;
+    if (fr === '__meus__') matchResp = currentAdmin && x.responsavelUid === currentAdmin.uid;
+    return matchStatus && matchTermo && matchResp;
   });
 
   document.getElementById('nTodos').textContent = chamados.length;
@@ -88,7 +136,8 @@ function render() {
     const descTrunc = x.descricao.length > 220 ? x.descricao.slice(0, 220) + '…' : x.descricao;
     art.innerHTML =
       '<div class="item-top"><div><h3>' + esc(x.protocolo) + ' — ' + esc(x.assunto) + '</h3>' +
-      '<p class="small">' + esc(x.nomeSolicitante) + ' · ' + esc(x.setor) + ' · ' + dt(x.criadoEm) + '</p></div>' +
+      '<p class="small">' + esc(x.nomeSolicitante) + ' · ' + esc(x.setor) + ' · ' + dt(x.criadoEm) + '</p>' +
+      respBadge(x) + '</div>' +
       '<span class="badge ' + bclass(x.status) + '">' + esc(x.status) + '</span></div>' +
       '<p>' + esc(descTrunc) + '</p>' +
       '<div class="actions"><button class="btn btn-abrir" type="button">Ver e atender</button></div>';
@@ -98,10 +147,23 @@ function render() {
 }
 
 document.getElementById('fStatus').addEventListener('change', render);
+document.getElementById('fResp').addEventListener('change', render);
 document.getElementById('busca').addEventListener('input', render);
 
 async function abrir(id) {
   const x = chamados.find(function (i) { return i.id === id; });
+  const jaMeu = currentAdmin && x.responsavelUid === currentAdmin.uid;
+  const semResp = !x.responsavelNome;
+
+  let botaoResp;
+  if (semResp) {
+    botaoResp = '<button class="btn" type="button" id="btnAssumir">Assumir chamado</button>';
+  } else if (jaMeu) {
+    botaoResp = '<button class="btn secondary" type="button" id="btnLiberar">Liberar chamado</button>';
+  } else {
+    botaoResp = '<button class="btn secondary" type="button" id="btnAssumir">Assumir mesmo assim (transferir para mim)</button>';
+  }
+
   modal.innerHTML =
     '<div class="modal-box">' +
     '<button class="btn secondary right" type="button" id="btnFechar">Fechar</button>' +
@@ -109,6 +171,8 @@ async function abrir(id) {
     '<p><b>Solicitante:</b> ' + esc(x.nomeSolicitante) + ' · ' + esc(x.setor) + '<br>' +
     '<b>Contato:</b> ' + esc(x.contato || 'Não informado') + '<br>' +
     '<b>Tipo:</b> ' + esc(x.tipo) + ' · <b>Prioridade:</b> ' + esc(x.prioridade) + '</p>' +
+    '<p>' + respBadge(x) + '</p>' +
+    '<div class="actions" style="margin-bottom:16px">' + botaoResp + '</div>' +
     '<p><b>Descrição:</b><br>' + esc(x.descricao) + '</p><hr>' +
     '<label>Status</label><select id="novoStatus">' +
     '<option' + (x.status === 'Aberto' ? ' selected' : '') + '>Aberto</option>' +
@@ -125,6 +189,11 @@ async function abrir(id) {
   document.getElementById('btnFechar').addEventListener('click', fechar);
   document.getElementById('btnSalvar').addEventListener('click', function () { salvar(id); });
 
+  const btnAssumir = document.getElementById('btnAssumir');
+  if (btnAssumir) btnAssumir.addEventListener('click', function () { assumir(id, !semResp); });
+  const btnLiberar = document.getElementById('btnLiberar');
+  if (btnLiberar) btnLiberar.addEventListener('click', function () { liberar(id); });
+
   const cm = await db.collection('chamados').doc(id).collection('mensagens').orderBy('criadoEm', 'asc').get();
   const hist = document.getElementById('hist');
   if (cm.empty) {
@@ -139,6 +208,46 @@ async function abrir(id) {
 
 function fechar() { modal.classList.add('hidden'); modal.innerHTML = ''; }
 
+async function assumir(id, transferindo) {
+  if (transferindo && !confirm('Este chamado já está com outro responsável. Deseja transferir para você mesmo assim?')) return;
+  try {
+    const x = chamados.find(function (i) { return i.id === id; });
+    const novoStatus = x.status === 'Aberto' ? 'Em atendimento' : x.status;
+    await db.collection('chamados').doc(id).update({
+      responsavelUid: currentAdmin.uid,
+      responsavelNome: currentAdmin.nome,
+      responsavelEmail: currentAdmin.email,
+      status: novoStatus,
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await db.collection('chamados').doc(id).collection('mensagens').add({
+      autor: 'Sistema', texto: currentAdmin.nome + ' assumiu este chamado.', criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    fechar();
+    await carregar();
+  } catch (e) {
+    alert('Não foi possível assumir o chamado. Confira as regras do Firestore.');
+    console.error(e);
+  }
+}
+
+async function liberar(id) {
+  if (!confirm('Deseja liberar este chamado (remover você como responsável)?')) return;
+  try {
+    await db.collection('chamados').doc(id).update({
+      responsavelUid: firebase.firestore.FieldValue.delete(),
+      responsavelNome: firebase.firestore.FieldValue.delete(),
+      responsavelEmail: firebase.firestore.FieldValue.delete(),
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    fechar();
+    await carregar();
+  } catch (e) {
+    alert('Não foi possível liberar o chamado. Confira as regras do Firestore.');
+    console.error(e);
+  }
+}
+
 async function salvar(id) {
   const status = document.getElementById('novoStatus').value;
   const texto = document.getElementById('textoResposta').value.trim();
@@ -146,7 +255,7 @@ async function salvar(id) {
     await db.collection('chamados').doc(id).update({ status: status, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() });
     if (texto) {
       await db.collection('chamados').doc(id).collection('mensagens').add({
-        autor: 'TI / PCP', texto: texto, criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        autor: (currentAdmin ? currentAdmin.nome : 'TI') + ' / Planejamento', texto: texto, criadoEm: firebase.firestore.FieldValue.serverTimestamp()
       });
     }
     fechar();
