@@ -1,5 +1,5 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Abrir chamado | PCP</title><link rel="stylesheet" href="style.css"></head><body>
-<header><h1>Central de Chamados de TI — PCP</h1><p>Solicite suporte sem sair desta página.</p></header>
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Abrir chamado | Planejamento</title><link rel="stylesheet" href="style.css"></head><body>
+<header><h1>Central de Chamados do Planejamento</h1><p>Solicite suporte sem sair desta página.</p></header>
 <nav class="nav"><a href="index.html">Abrir chamado</a><a href="acompanhar.html">Acompanhar chamado</a><a href="admin.html">Área ADM</a></nav>
 <main class="container"><section class="card"><h2>Abrir novo chamado</h2><p class="small">Preencha os dados abaixo. Ao enviar, você receberá um número de protocolo para acompanhar a solicitação.</p>
 <form id="formChamado"><div class="grid">
@@ -16,6 +16,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script><script src="firebase-config.js"></script><script>
 const form=document.getElementById('formChamado'),msg=document.getElementById('msg');
 function aviso(texto,tipo){msg.textContent=texto;msg.className='notice '+tipo}
-function protocolo(){return 'PCP-'+new Date().getFullYear()+'-'+Date.now().toString().slice(-6)}
+function protocolo(){return 'PLAN-'+new Date().getFullYear()+'-'+Date.now().toString().slice(-6)}
 form.addEventListener('submit',async e=>{e.preventDefault();const b=document.getElementById('enviar');b.disabled=true;aviso('Enviando chamado...','info');const p=protocolo();try{await db.collection('chamados').add({protocolo:p,nomeSolicitante:nome.value.trim(),setor:setor.value.trim(),contato:contato.value.trim(),tipo:tipo.value,prioridade:prioridade.value,assunto:assunto.value.trim(),descricao:descricao.value.trim(),status:'Aberto',criadoEm:firebase.firestore.FieldValue.serverTimestamp(),atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()});form.classList.add('hidden');msg.className='notice';document.getElementById('protocolo').textContent=p;document.getElementById('sucesso').classList.remove('hidden')}catch(err){aviso('Não foi possível enviar. Verifique a configuração do Firebase e tente novamente.','error');console.error(err);b.disabled=false}});
 </script></body></html>
