@@ -1,5 +1,5 @@
 <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Abrir chamado | Planejamento</title><link rel="stylesheet" href="style.css"></head><body>
-<header><h1>Central de Chamados do Planejamento</h1><p>Solicite suporte sem sair desta página.</p></header>
+<header><h1>Central de Chamados do Planejamento</h1><p>Solicite suporte para o time da Excelência de Planejamento.</p></header>
 <nav class="nav"><a href="index.html">Abrir chamado</a><a href="acompanhar.html">Acompanhar chamado</a><a href="admin.html">Área ADM</a></nav>
 <main class="container"><section class="card"><h2>Abrir novo chamado</h2><p class="small">Preencha os dados abaixo. Ao enviar, você receberá um número de protocolo para acompanhar a solicitação.</p>
 <form id="formChamado"><div class="grid">
@@ -7,7 +7,7 @@
 <div><label for="setor">Setor / área *</label><input id="setor" placeholder="Ex.: PCP" maxlength="100" required></div>
 <div><label for="contato">E-mail</label><input id="contato" maxlength="120"></div>
 <div><label for="tipo">Tipo de solicitação *</label><select id="tipo" required><option value="">Selecione</option><option>Erro em BI</option><option>Solicitação de acesso</option><option>Problema de atualização</option><option>Dúvida sobre uso de BI</option><option>Sugestão de criação de BI</option><option>Outro</option></select></div>
-<div><label for="prioridade">Prioridade *</label><select id="prioridade" required><option value="Normal">Normal</option><option>Baixa</option><option>Alta</option><option>Urgente (impacto na produção)</option></select></div>
+<div><label for="prioridade">Prioridade *</label><select id="prioridade" required><option value="Normal">Normal</option><option>Baixa</option><option>Alta</option><option>Urgente</option></select></div>
 <div class="full"><label for="assunto">Assunto do chamado *</label><input id="assunto" maxlength="150" placeholder="Resumo do problema" required></div>
 <div class="full"><label for="descricao">Descreva o problema/solicitação *</label><textarea id="descricao" maxlength="3000" placeholder="Informe o que aconteceu, quando começou, sistemas envolvidos e possíveis mensagens de erro." required></textarea></div>
 </div><button id="enviar" class="btn" type="submit">Enviar chamado</button><div id="msg" class="notice"></div></form>
